@@ -27,13 +27,13 @@ Getting started::Hello Window
 
 我们要做的是，将头文件目录（Library\Includes）添加到工程的包含目录中，将库文件目录（Library\Libs）添加到工程的库目录中，在链接器中添加附加依赖项**opengl32.lib**，**glfw3.lib**，并且将glad.c添加到工程中。如下图。
 
-![ProjectSetting](SourceCode\HelloWindow\ProjectSetting.jpg)
+![ProjectSetting](https://github.com/HongfeiXu/LearnModernOpenGL/blob/master/SourceCode/HelloWindow/ProjectSetting.jpg?raw=true)
 
 
 
 ### 2. 输出了一个窗口！并且可以通过Esc按键关闭窗口！
 
-![HelloWindow](SourceCode\HelloWindow\screenshot.png)
+![HelloWindow](https://github.com/HongfeiXu/LearnModernOpenGL/blob/master/SourceCode/HelloWindow/screenshot.png?raw=true)
 
 代码在[这里](SourceCode/HelloWindow/main.cpp)
 
