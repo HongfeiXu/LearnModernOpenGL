@@ -6,7 +6,7 @@
 >
 > Website: https://learnopengl-cn.github.io/
 
-## Day 1
+## Day 1，你好，窗口
 
 > Date: 2018.4.19
 
@@ -16,7 +16,7 @@ Getting started::Creating a window
 
 Getting started::Hello Window
 
-### 配置库
+### 1. 配置库
 
 | 库名                                      | 作用                                           |
 | ----------------------------------------- | ---------------------------------------------- |
@@ -27,13 +27,17 @@ Getting started::Hello Window
 
 我们要做的是，将头文件目录（Library\Includes）添加到工程的包含目录中，将库文件目录（Library\Libs）添加到工程的库目录中，在链接器中添加附加依赖项**opengl32.lib**，**glfw3.lib**，并且将glad.c添加到工程中。如下图。
 
-![ProjectSetting](https://github.com/HongfeiXu/LearnModernOpenGL/blob/master/SourceCode/HelloWindow/ProjectSetting.jpg?raw=true)
+![ProjectSetting](SourceCode/HelloWindow/ProjectSetting.jpg)
 
 
 
 ### 2. 输出了一个窗口！并且可以通过Esc按键关闭窗口！
 
-![HelloWindow](https://github.com/HongfeiXu/LearnModernOpenGL/blob/master/SourceCode/HelloWindow/screenshot.png?raw=true)
+![HelloWindow](SourceCode/HelloWindow/screenshot.png)
 
 代码在[这里](SourceCode/HelloWindow/main.cpp)
+
+## Day 2 你好，三角形
+
+> Date: 2018.4.27
 
