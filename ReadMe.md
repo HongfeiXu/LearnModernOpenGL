@@ -39,5 +39,19 @@ Getting started::Hello Window
 
 ## Day 2 你好，三角形
 
-> Date: 2018.4.27
+> Date: 2018.8.31
+
+### 1. VBO,VAO,EBO
+
+![VAO-VBO-EBO](SourceCode/HelloTriangle/vertex_array_objects_ebo.png)
+
+### 2. Hello Triangle
+
+![Hello Triangle](SourceCode/HelloTriangle/hello_triangle.png)
+
+![Hello Triangle](SourceCode/HelloTriangle/hello_triangle_colorful.png)
+
+![Hello Triangle](SourceCode/HelloTriangle/hello_triangle_indexed_fill.png)
+
+![Hello Triangle](SourceCode/HelloTriangle/hello_triangle_indexed_wire.png)
 
