@@ -2,6 +2,7 @@
 #include <GLFW\glfw3.h>
 
 #include <iostream>
+#include <learnopengl\shader_s.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -10,33 +11,10 @@ void processInput(GLFWwindow* window);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location = 0) in vec3 vertex_position;\n"
-"layout (location = 1) in vec3 vertex_color;\n"
-"out vec3 color;\n"
-"void main()\n"
-"{\n"
-"color = vertex_color;\n"
-"gl_Position = vec4(vertex_position, 1.0);\n"
-"}\n\0";
-
-const char* fragmentShaderSource = "#version 330 core\n"
-"in vec3 color;\n"
-"out vec4 frag_color;\n"
-"void main()\n"
-"{\n"
-"frag_color = vec4(color, 1.0);\n"
-"}\n\0";
-
-// ui interactions
-enum DrawMode{Fill, Wire};
-
-DrawMode drawMode = DrawMode::Fill;
-
 int main()
 {
 	///////////////////////////////////////////////
-	// glfw: ´´½¨´°¿Ú
+	// glfw: åˆ›å»ºçª—å£
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -51,12 +29,12 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	///////////////////////////////////////////////
-	// glfw: ×¢²á»Øµ÷º¯Êı
-	// ×¢²á´°¿Ú»Øµ÷º¯Êı£¬µ÷ÕûÊÓ¿Ú´óĞ¡
+	// glfw: æ³¨å†Œå›è°ƒå‡½æ•°
+	// æ³¨å†Œçª—å£å›è°ƒå‡½æ•°ï¼Œè°ƒæ•´è§†å£å¤§å°
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	///////////////////////////////////////////////
-	// glad: ³õÊ¼»¯GLAD£¬¹ÜÀíOpenGLº¯ÊıÖ¸Õë
+	// glad: åˆå§‹åŒ–GLADï¼Œç®¡ç†OpenGLå‡½æ•°æŒ‡é’ˆ
 	if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
@@ -66,132 +44,106 @@ int main()
 	///////////////////////////////////////////////
 	// build and compile our shader program
 	// vertex shader
-	unsigned int vertexShader;
-	vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
-	int success;
-	char infoLog[512];
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-	// fragment shader
-	unsigned int fragmentShader;
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-	// link shaders
-	unsigned int shaderProgram;
-	shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-	}
-	// ÔÚ°Ñ×ÅÉ«Æ÷¶ÔÏóÁ´½Óµ½³ÌĞò¶ÔÏóÒÔºó£¬¼ÇµÃÉ¾³ı×ÅÉ«Æ÷¶ÔÏó£¬ÎÒÃÇ²»ÔÙĞèÒªËüÃÇÁË
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
+	Shader ourShader("src/vert.glsl", "src/frag.glsl");
 
 	///////////////////////////////////////////////
 	// set up vertex data (and buffer(s)) and configure vertex attributes
-	float points[] = {
-		-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,	// left (pos + color)
-		0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,	// right(pos + color)
-		 0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f	// top  (pos + color)
+	float vertices[] = {
+		// ä½ç½®				// é¢œè‰²
+		 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,	0.f,	// left
+		-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,	// right
+		 0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f	// top
 	};
 
-	unsigned int vao = 0;
-	unsigned int points_vbo = 0;
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &points_vbo);
+	unsigned int VAO;
+	unsigned int VBO;
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	// bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attribut(s)
+	glBindVertexArray(VAO);
 
-	glBindVertexArray(vao);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, points_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+	// å¤åˆ¶é¡¶ç‚¹æ•°ç»„åˆ°ç¼“å†²ä¸­ä¾› OpenGL ä½¿ç”¨
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	// è®¾ç½®é¡¶ç‚¹å±æ€§æŒ‡é’ˆ
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
-	
-	glBindVertexArray(0);
 
-	glEnable(GL_CULL_FACE);
-	glFrontFace(GL_CCW);
-	glCullFace(GL_BACK);
+	// note that this is allowed, the call to glVertexAttribPointer registered VBO as the the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+	// VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VOBs) when it's not directly necessary
+	//glBindVertexArray(0);
+
+	// bind the VAO (it was already bound, but just to demonstrate) : seeing as we only have a single VAO and we can
+	// just bind it beforehand before rendering the respective triangle; this is another approach
+	glBindVertexArray(VAO);
+
+	// calculate fps
+	float lastTime = glfwGetTime();
+	int cntFrames = 0;
 
 	///////////////////////////////////////////////
-	// äÖÈ¾Ñ­»·£¨Render Loop£©
+	// æ¸²æŸ“å¾ªç¯ï¼ˆRender Loopï¼‰
 	while (!glfwWindowShouldClose(window))
 	{
-		// ÊäÈë
-		processInput(window);
-
-		switch (drawMode)
+		// calculate fps
+		float currentTime = glfwGetTime();
+		++cntFrames;
+		if (currentTime - lastTime >= 1.0f)
 		{
-		case Fill:
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			break;
-		case Wire:
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			break;
-		default:
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			break;
+			std::cout << cntFrames << " fps" << std::endl;
+			cntFrames = 0;
+			lastTime = currentTime;
 		}
 
-		// äÖÈ¾Ö¸Áî
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);	// ×´Ì¬ÉèÖÃº¯Êı
-		glClear(GL_COLOR_BUFFER_BIT);			// ×´Ì¬Ê¹ÓÃº¯Êı
+		// è¾“å…¥
+		processInput(window);
 
-		// draw our first triangle
-		glUseProgram(shaderProgram);
-		glBindVertexArray(vao);	// seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+		// æ¸²æŸ“æŒ‡ä»¤
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);	// çŠ¶æ€è®¾ç½®å‡½æ•°
+		glClear(GL_COLOR_BUFFER_BIT);			// çŠ¶æ€ä½¿ç”¨å‡½æ•°
+
+		// æ¿€æ´»ç€è‰²å™¨ç¨‹åº
+		ourShader.use();
+
+		// æ›´æ–° uniform
+		//float timeValue = glfwGetTime();
+		//float lateralOffset = sin(timeValue);
+		ourShader.setFloat ("lateralOffset", 0.5f);
+
+		// ç»˜åˆ¶ä¸‰è§’å½¢
 		glDrawArrays(GL_TRIANGLES, 0, 3);
-		// glBindVertexArray(0); // no need to unbind it every time
 
-		// glfw: ½»»»ÑÕÉ«»º³å£¬¼ì²éÊäÈëÊÂ¼ş£¨keys pressed/released, mouse moved etc£©
+		// glfw: äº¤æ¢é¢œè‰²ç¼“å†²ï¼Œæ£€æŸ¥è¾“å…¥äº‹ä»¶ï¼ˆkeys pressed/released, mouse moved etcï¼‰
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
 	///////////////////////////////////////////////
 	// optional: de-allocate all resources once they've outlived their purpose:
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &points_vbo);
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
 
 	///////////////////////////////////////////////
-	// ÖÕÖ¹£¬ÊÍ·ÅËùÓĞÖ®Ç°·ÖÅäµÄGLFW×ÊÔ´
+	// ç»ˆæ­¢ï¼Œé‡Šæ”¾æ‰€æœ‰ä¹‹å‰åˆ†é…çš„GLFWèµ„æº
 	glfwTerminate();
 	return 0;
 }
 
-// glfw: »Øµ÷º¯Êı£¬µ±´°¿Ú¸Ä±ä´óĞ¡Ê±£¬GLFW»áµ÷ÓÃÕâ¸öº¯Êı²¢Ìî³äÏàÓ¦µÄ²ÎÊı
+// glfw: å›è°ƒå‡½æ•°ï¼Œå½“çª—å£æ”¹å˜å¤§å°æ—¶ï¼ŒGLFWä¼šè°ƒç”¨è¿™ä¸ªå‡½æ•°å¹¶å¡«å……ç›¸åº”çš„å‚æ•°
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-// ´¦ÀíËùÓĞÊäÈë°´¼ü: ÏòGLFW²éÑ¯ÊÇ·ñÓĞÏà¹ØµÄ°´¼ü±»°´ÏÂ/ÊÍ·Å£¬²¢×÷³öÏàÓ¦µÄ·´Ó¦
+// å¤„ç†æ‰€æœ‰è¾“å…¥æŒ‰é”®: å‘GLFWæŸ¥è¯¢æ˜¯å¦æœ‰ç›¸å…³çš„æŒ‰é”®è¢«æŒ‰ä¸‹/é‡Šæ”¾ï¼Œå¹¶ä½œå‡ºç›¸åº”çš„ååº”
 void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		drawMode = DrawMode::Wire;
-	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-		drawMode = DrawMode::Fill;
 }
