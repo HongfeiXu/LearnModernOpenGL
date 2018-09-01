@@ -119,3 +119,6 @@ glEnableVertexAttribArray(1);
 
 ## 自己的着色器类
 
+练习
+
+![](SourceCode/03.Shader/shader_class/exercise.png)
