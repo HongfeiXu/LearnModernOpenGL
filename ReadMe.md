@@ -43,13 +43,7 @@ Getting started::Hello Window
 
 ### 2. Hello Triangle
 
-![Hello Triangle](SourceCode/02.HelloTriangle/hello_triangle.png)
-
-![Hello Triangle](SourceCode/02.HelloTriangle/hello_triangle_colorful.png)
-
 ![Hello Triangle](SourceCode/02.HelloTriangle/hello_triangle_indexed_fill.png)
-
-![Hello Triangle](SourceCode/02.HelloTriangle/hello_triangle_indexed_wire.png)
 
 ## Day 03 着色器
 
@@ -122,3 +116,50 @@ glEnableVertexAttribArray(1);
 练习
 
 ![](SourceCode/03.Shader/shader_class/exercise.png)
+
+## Day 04 纹理
+
+> 2018.9.1
+
+- 纹理环绕方式
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+```
+
+- 纹理过滤
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
+
+- 多级渐远纹理（Mipmap）
+
+```c
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
+
+- 加载与创建纹理
+
+使用 [stb_image.h](https://github.com/nothings/stb)
+
+- 应用纹理
+
+- 纹理单元
+
+注：一个纹理的默认纹理单元是0，它是默认的激活纹理单元，所以教程前面部分我们没有分配一个位置值。 
+
+```c
+glActiveTexture(GL_TEXTURE0); // 在绑定纹理之前先激活纹理单元
+glBindTexture(GL_TEXTURE_2D, texture);
+```
+
+![](SourceCode/04.Texture/Container/Container_Colorful.png)
+
+
+
+![](SourceCode/04.Texture/Mix2Textures/mix.gif)
+
