@@ -8,7 +8,7 @@
 
 ## Day 01 你好，窗口
 
-> Date: 2018.4.19
+> 2018.4.19
 
 Getting started::OpenGL
 
@@ -35,7 +35,7 @@ Getting started::Hello Window
 
 ## Day 02 你好，三角形
 
-> Date: 2018.8.31
+> 2018.8.31
 
 ### 1. VBO,VAO,EBO
 
@@ -111,7 +111,7 @@ glEnableVertexAttribArray(1);
 
 ![](SourceCode/03.Shader/more_vertex_attributes.png)
 
-## 自己的着色器类
+### 自己的着色器类
 
 练习
 
@@ -157,9 +157,134 @@ glActiveTexture(GL_TEXTURE0); // 在绑定纹理之前先激活纹理单元
 glBindTexture(GL_TEXTURE_2D, texture);
 ```
 
+- 多个纹理单元的情况：
+
+编辑片段着色器来接收另一个采样器 
+
+```c
+#version 330 core
+...
+
+uniform sampler2D texture1;
+uniform sampler2D texture2;
+
+void main()
+{
+    FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.2);
+}
+```
+
+为了使用第二个纹理（以及第一个），我们必须改变一点渲染流程，先绑定两个纹理到对应的纹理单元，然后定义哪个uniform采样器对应哪个纹理单元： 
+
+```c
+glActiveTexture(GL_TEXTURE0);
+glBindTexture(GL_TEXTURE_2D, texture1);
+glActiveTexture(GL_TEXTURE1);
+glBindTexture(GL_TEXTURE_2D, texture2);
+
+glBindVertexArray(VAO);
+glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+```
+
+使用glUniform1i设置每个采样器的方式告诉OpenGL每个着色器采样器属于哪个纹理单元。我们只需要设置一次即可，所以这个会放在渲染循环的前面 
+
+```c
+ourShader.use(); // 别忘记在设置 uniform 之前激活 shader
+glUniform1i(glGetUniformLocation(ourShader.ID, "texture1"), 0); // 手动设置
+ourShader.setInt("texture2", 1); // 或者使用着色器类设置
+
+while(...) 
+{
+    [...]
+}
+```
+
+```c
+stbi_set_flip_vertically_on_load(true); // stb_image.h能够在图像加载时帮助我们翻转y轴
+```
+
 ![](SourceCode/04.Texture/Container/Container_Colorful.png)
 
 
 
 ![](SourceCode/04.Texture/Mix2Textures/mix.gif)
+
+## Day 05 变换
+
+> 2018.9.3
+
+[GLM 库](https://github.com/g-truc/glm)
+
+GLM库从0.9.9版本起，默认会将矩阵类型初始化为一个零矩阵（所有元素均为0），而不是单位矩阵（对角元素为1，其它元素为0）。如果你使用的是0.9.9或0.9.9以上的版本，你需要将所有的矩阵初始化改为 `glm::mat4 mat = glm::mat4(1.0f)`。如果你想与本教程的代码保持一致，请使用低于0.9.9版本的GLM，或者改用上述代码初始化所有的矩阵。 
+
+这里我使用了最新的 0.9.9 版本。
+
+- 创建变换矩阵：（先缩放，后旋转，与阅读顺序相反）
+
+```c
+glm::mat4 trans;
+trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
+trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5)); 
+```
+
+RS(p)
+
+- 把矩阵传递给着色器：
+
+```c
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
+
+out vec2 TexCoord;
+
+uniform mat4 transform;
+
+void main()
+{
+    gl_Position = transform * vec4(aPos, 1.0f);
+    TexCoord = vec2(aTexCoord.x, 1.0 - aTexCoord.y);
+}
+```
+
+```c
+unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
+glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+```
+
+- 让箱子随着时间旋转，还会重新把箱子放在窗口的右下角 
+
+```c
+glm::mat4 trans;
+trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+```
+
+在这里我们先把箱子围绕原点(0, 0, 0)旋转，之后，我们把旋转过后的箱子位移到屏幕的右下角。记住，实际的变换顺序应该与阅读顺序相反：尽管在代码中我们先位移再旋转，实际的变换却是先应用旋转再是位移的。 
+
+TR(p)
+
+![](SourceCode/05.Transform/rotate_0.gif)
+
+更改构造矩阵的代码顺序，RT(p)
+
+```c
+glm::mat4 trans;
+trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+```
+
+结果如下
+
+![](SourceCode/05.Transform/rotate_1.gif)
+
+- 练习题
+
+尝试调用glDrawElements画出两个箱子，**只**使用变换将其摆放在不同的位置。让这个箱子被摆放在窗口的左上角，并且会不断的缩放（而不是旋转）。（`sin`函数在这里会很有用，不过注意使用`sin`函数时应用负值会导致物体被翻转） 
+
+![](SourceCode/05.Transform/rotate_scale.gif)
+
+## Day 06 Coordinate Systems
+
+![](SourceCode/06.CoordinateSystems/coordinate_systems.png)
 
