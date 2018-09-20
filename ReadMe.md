@@ -286,5 +286,27 @@ trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
 
 ## Day 06 Coordinate Systems
 
+> 2018.9.9
+
+
+
 ![](SourceCode/06.CoordinateSystems/coordinate_systems.png)
+
+### 进入 3D
+
+![](SourceCode/06.CoordinateSystems/example_0.png)
+
+### 更多的 3D
+
+- 使用Z缓冲，配置OpenGL来进行深度测试。
+
+![](SourceCode/06.CoordinateSystems/example_1.png)
+
+![](SourceCode/06.CoordinateSystems/example_2.png)
+
+![](SourceCode/06.CoordinateSystems/example_3.gif)
+
+## Day 07 Camera
+
+> 2018.9.20
 
