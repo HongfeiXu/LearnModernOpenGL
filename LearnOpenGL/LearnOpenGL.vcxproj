@@ -161,6 +161,7 @@
     <ClCompile Include="src\stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\lamp_frag.glsl" />
     <None Include="src\vert.glsl" />
     <None Include="src\frag.glsl" />
   </ItemGroup>
