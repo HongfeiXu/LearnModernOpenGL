@@ -188,17 +188,16 @@ int main()
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-		lampPos = glm::vec3(glm::sin(currentTime), glm::sin(currentTime), glm::cos(currentTime));
+		lampPos = glm::vec3(glm::sin(currentTime), 0, glm::cos(currentTime));
 
 		// render box
 		lightingShader.use();
 		lightingShader.setMat4("view", view);
-		lightingShader.setMat4("projection", projection);	
+		lightingShader.setMat4("projection", projection);
 		lightingShader.setMat4("model", model);
 		lightingShader.setVec3("objectColor", 1.0f, 1.5f, 0.31f);
 		lightingShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 		lightingShader.setVec3("lightPos", lampPos);
-		lightingShader.setVec3("viewPos", camera.Position);
 
 		glBindVertexArray(cubeVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);

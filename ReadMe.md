@@ -367,7 +367,27 @@ WASD 控制位置变化，鼠标控制摄像头方向（可以pitch 和  yaw，�
 
 ![](SourceCode/09.Color/light_color.png)
 
+## Day 10 基础光照
+
+> 2018.9.30
+
+Phong 光照模型：Ambient + Diffuse + Specular
+
+**将模型空间发现转换到世界空间**
+
+```c
+Normal = mat3(transpose(inverse(model))) * aNormal;
+```
+
+注：
+
+在顶点着色器中实现的冯氏光照模型叫做Gouraud着色(Gouraud Shading)，而不是冯氏着色(Phong Shading)。记住，由于插值，这种光照看起来有点逊色。冯氏着色能产生更平滑的光照效果。 
 
 
 
+![](SourceCode/10.BasicLighting/basic_lighting_gouruad.png)
+
+实验：
+
+![](SourceCode/10.BasicLighting/phong.png)
 

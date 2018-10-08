@@ -35,5 +35,8 @@
     <None Include="src\lamp_frag.glsl">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="src\lamp_vert.glsl">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
