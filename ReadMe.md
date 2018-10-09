@@ -391,3 +391,87 @@ Normal = mat3(transpose(inverse(model))) * aNormal;
 
 ![](SourceCode/10.BasicLighting/phong.png)
 
+### 练习
+
+- 让光源来回移动
+
+见 exercise_0_world_space
+
+- 在观察空间（而不是世界空间）中计算冯氏光照
+
+见 exercise_1_view_space
+
+- 实现一个Gouraud着色（而不是冯氏着色）
+
+见 exercise_2_gouraud_shading
+
+![](SourceCode/10.BasicLighting/exercise_2.png)
+
+## Day 11 材质
+
+### 材质属性
+
+在片段着色器中，创建一个结构体来存储物体的材质属性，然后声明一个uniform变量。
+
+```c
+#version 330 core
+struct Material {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shininess;
+}; 
+
+uniform Material material;
+```
+
+在需要的地方访问材质结构体中的属性，依据材质的颜色来计算最终的输出颜色。
+
+```c
+void main()
+{    
+    // 环境光
+    vec3 ambient = lightColor * material.ambient;
+
+    // 漫反射 
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = lightColor * (diff * material.diffuse);
+
+    // 镜面光
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular = lightColor * (spec * material.specular);  
+
+    vec3 result = ambient + diffuse + specular;
+    FragColor = vec4(result, 1.0);
+}
+```
+
+在程序中设置适当的uniform，对物体设置材质。
+
+```c
+lightingShader.setVec3("material.ambient",  1.0f, 0.5f, 0.31f);
+lightingShader.setVec3("material.diffuse",  1.0f, 0.5f, 0.31f);
+lightingShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
+lightingShader.setFloat("material.shininess", 32.0f);
+```
+
+### 光的属性
+
+```c
+struct Light
+{
+	vec3 position;
+
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
+};
+
+uniform Light light;
+```
+
+![](SourceCode/11.Materials/material_light.png)
