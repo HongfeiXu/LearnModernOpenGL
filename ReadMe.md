@@ -409,6 +409,8 @@ Normal = mat3(transpose(inverse(model))) * aNormal;
 
 ## Day 11 材质
 
+> 2018.10.9
+
 ### 材质属性
 
 在片段着色器中，创建一个结构体来存储物体的材质属性，然后声明一个uniform变量。
@@ -475,3 +477,57 @@ uniform Light light;
 ```
 
 ![](SourceCode/11.Materials/material_light.png)
+
+## Day 12 光照贴图
+
+>  2018.10.9
+
+引入漫反射和镜面反射贴图。这允许我们对物体的漫反射分量（以及间接地对环境光分量，它们几乎总是一样的）和镜面光分量有着更精确的控制。
+
+### 漫反射贴图
+
+也即前面用到的纹理，通常叫做漫反射贴图（Diffuse Map）,表现了物体所有的漫反射颜色的纹理图像。另外，由于环境光颜色在几乎所有情况下都等于漫反射颜色，所以也移除了环境光材质颜色向量。
+
+```c++
+struct Material {
+    sampler2D diffuse;
+    vec3      specular;
+    float     shininess;
+}; 
+...
+in vec2 TexCoords;
+```
+
+接下来就是在顶点数据中添加uv坐标，以及进行漫反射贴图的读取和设置。最终得到的效果如下：
+
+![](SourceCode/12.LightingMaps/DiffuseMap.png)
+
+### 高光反射贴图
+
+我们需要生成一个黑白的（如果你想得话也可以是彩色的）纹理，来定义物体每部分的镜面光强度。
+
+镜面高光的强度可以通过图像每个像素的亮度来获取。镜面光贴图上的每个像素都可以由一个颜色向量来表示，比如说黑色代表颜色向量`vec3(0.0)`，灰色代表颜色向量`vec3(0.5)`。在片段着色器中，我们接下来会取样对应的颜色值并将它乘以光源的镜面强度。一个像素越「白」，乘积就会越大，物体的镜面光分量就会越亮。
+
+```c
+struct Material
+{
+	sampler2D diffuse;	// 漫反射贴图
+	sampler2D specular;	// 高光反射贴图
+	float shininess;
+};
+```
+
+接下来就是在顶点数据中添加uv坐标，以及进行漫反射贴图的读取和设置。最终得到的效果如下：
+
+![](SourceCode/12.LightingMaps/SpecularMap.png)
+
+### 放射光贴图
+
+```c
+vec3 emission = texture(material.emission, TexCoords).rgb;
+vec3 result = ambient + diffuse	+ specular + emission;
+```
+
+效果如下
+
+![](SourceCode/12.LightingMaps/EmissionMap.png)

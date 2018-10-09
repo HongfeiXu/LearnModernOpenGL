@@ -156,8 +156,6 @@ int main()
 
 	// load textures (we now use a utility function to keep the code more organized)
 	unsigned int diffuseMap = loadTexture("resources/textures/container2.png");
-	unsigned int specularMap = loadTexture("resources/textures/container2_specular.png");
-	unsigned int emissionMap = loadTexture("resources/textures/matrix.jpg");
 
 	// calculate fps
 	float lastTime = static_cast<float>(glfwGetTime());
@@ -166,8 +164,6 @@ int main()
 	lightingShader.use();
 	// 指定 texture units
 	lightingShader.setInt("material.diffuse", 0);
-	lightingShader.setInt("material.specular", 1);
-	lightingShader.setInt("material.emission", 2);
 	
 	///////////////////////////////////////////////
 	// 渲染循环（Render Loop）
@@ -199,10 +195,6 @@ int main()
 		// bind diffuse map
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, diffuseMap);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, specularMap);
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, emissionMap);
 
 		glm::mat4 model = glm::mat4(1.0f);
 		//model = glm::rotate(model, glm::radians(30.0f), glm::vec3(1, 1, 0));
