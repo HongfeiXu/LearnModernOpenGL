@@ -14,6 +14,7 @@ struct Light
 	vec3 position;
 	vec3 direction;
 	float cutOff;		// 切光角（的余弦值）
+	float outerCutOff;	// 外圆锥的切光角（的余弦值），用来软化边缘
 
 	vec3 ambient;
 	vec3 diffuse;
@@ -55,14 +56,11 @@ void main()
 	specular *= attenuation;
 
 	float theta = dot(lightDir, normalize(-light.direction));
-	if(theta > light.cutOff)
-	{
-		vec3 result = ambient + diffuse	+ specular;
-		FragColor = vec4(result, 1.0);
-	}
-	else
-	{
-		vec3 result = ambient;
-		FragColor = vec4(result, 1.0);
-	}
+	// 软化边缘
+	float epsilon = light.cutOff - light.outerCutOff;
+	float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+	diffuse *= intensity;
+	specular *= intensity;
+	vec3 result = ambient + diffuse	+ specular;
+	FragColor = vec4(result, 1.0);
 }

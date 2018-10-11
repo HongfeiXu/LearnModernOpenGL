@@ -230,25 +230,21 @@ int main()
 		// render box(es)
 
 		lightingShader.use();
+		//lightingShader.setVec3("light.position", lampPos);
+		lightingShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
 		lightingShader.setVec3("viewPos", camera.Position);
 		// transformations
 		lightingShader.setMat4("view", view);
 		lightingShader.setMat4("projection", projection);
+		//lightingShader.setMat4("model", model);
 
 		// material properties
 		lightingShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
 		lightingShader.setFloat("material.shininess", 32.0f);
 		// light properties
-		//lightingShader.setVec3("light.position", lampPos);
-		lightingShader.setVec3("light.position", camera.Position);
-		lightingShader.setVec3("light.direction", camera.Front);
-		lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
 		lightingShader.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
 		lightingShader.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
 		lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
-		lightingShader.setFloat("light.constant", 1.0f);
-		lightingShader.setFloat("light.linear", 0.09f);
-		lightingShader.setFloat("light.quadratic", 0.032f);
 		glBindVertexArray(cubeVAO);
 		for (unsigned int i = 0; i < 10; i++)
 		{

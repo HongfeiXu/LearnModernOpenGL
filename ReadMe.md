@@ -531,3 +531,93 @@ vec3 result = ambient + diffuse	+ specular + emission;
 效果如下
 
 ![](SourceCode/12.LightingMaps/EmissionMap.png)
+
+## Day 13 投光物
+
+### 平行光
+
+```c
+struct Light
+{
+	//vec3 position;
+	vec3 direction;		// （光源指向物体的方向）
+
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
+};
+```
+
+
+
+![](SourceCode/13.LightCasters/Sun.png)
+
+### 点光源
+
+衰减 Attenuation
+
+```c
+struct Light {
+    vec3 position;  
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    // 实现衰减
+    float constant;
+    float linear;
+    float quadratic;
+};
+```
+
+![](SourceCode/13.LightCasters/PointLight.png)
+
+### 聚光
+
+手电筒 Flashlight
+
+![](SourceCode/13.LightCasters/light_casters_spotlight_angles.png)
+
+- `LightDir` ：从片段指向光源的向量。
+- `SpotDir` ：聚光灯所指向的方向。
+- `Phi` ：指定了聚光半径到的切光角。落在这个角度之外的物体都不会被这个聚光所照亮。
+- `Theta` ：`LightDir` 和 `SpotDir` 向量之间的夹角。在聚光内部的话，`Theta` 应该比 `Phi` 值小。
+
+![](SourceCode/13.LightCasters/FlashLight.png)
+
+**平滑\软化边缘**
+
+为了创建一种看起来边缘平滑的聚光，我们需要模拟聚光有一个内圆锥(Inner Cone)和一个外圆锥(Outer Cone)。我们可以将内圆锥设置为上一部分中的那个圆锥，但我们也需要一个外圆锥，来让光从内圆锥逐渐减暗，直到外圆锥的边界。
+
+```c
+struct Light
+{
+	vec3 position;
+	vec3 direction;
+	float cutOff;		// 切光角（的余弦值）
+	float outerCutOff;	// 外圆锥的切光角（的余弦值），用来软化边缘
+
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
+
+	// attenuation
+	float constant;
+	float linear;
+	float quadratic;
+};
+```
+
+```c
+float theta     = dot(lightDir, normalize(-light.direction));
+float epsilon   = light.cutOff - light.outerCutOff;
+float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);    
+...
+// 将不对环境光做出影响，让它总是能有一点光
+diffuse  *= intensity;
+specular *= intensity;
+...
+```
+
+![](SourceCode/13.LightCasters/FlashLightSoft.png)
+

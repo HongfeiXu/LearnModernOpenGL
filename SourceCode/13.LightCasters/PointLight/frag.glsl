@@ -6,14 +6,13 @@ struct Material
 {
 	sampler2D diffuse;	// 漫反射贴图
 	sampler2D specular;	// 高光反射贴图
+	sampler2D emission;
 	float shininess;
 };
 
 struct Light
 {
 	vec3 position;
-	vec3 direction;
-	float cutOff;		// 切光角（的余弦值）
 
 	vec3 ambient;
 	vec3 diffuse;
@@ -35,7 +34,6 @@ uniform vec3 viewPos;
 
 void main()
 {
-
 	vec3 ambient = light.ambient * texture(material.diffuse, TexCoords).rgb;
 
 	vec3 norm = normalize(Normal);
@@ -48,21 +46,17 @@ void main()
 	float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
 	vec3 specular = light.specular * (spec * texture(material.specular, TexCoords).rgb);
 
+	//vec3 emission = texture(material.emission, TexCoords).rgb;
+
 
 	float distance = length(FragPos - light.position);
 	float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
+	ambient *= attenuation;
 	diffuse *= attenuation;
 	specular *= attenuation;
 
-	float theta = dot(lightDir, normalize(-light.direction));
-	if(theta > light.cutOff)
-	{
-		vec3 result = ambient + diffuse	+ specular;
-		FragColor = vec4(result, 1.0);
-	}
-	else
-	{
-		vec3 result = ambient;
-		FragColor = vec4(result, 1.0);
-	}
+	//vec3 result = ambient + diffuse	+ specular + emission;
+	vec3 result = ambient + diffuse	+ specular;
+
+	FragColor = vec4(result, 1.0);
 }
