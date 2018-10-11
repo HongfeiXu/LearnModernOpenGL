@@ -6,7 +6,6 @@ struct Material
 {
 	sampler2D diffuse;	// 漫反射贴图
 	sampler2D specular;	// 高光反射贴图
-	// sampler2D emission;
 	float shininess;
 };
 
@@ -77,8 +76,6 @@ void main()
 	}
 	result += CalFlashLight(flashLight, normal, FragPos, viewDir);
 
-	// result += texture(material.emission, TexCoords).rgb;
-
 	FragColor = vec4(result, 1.0);
 }
 
@@ -139,7 +136,6 @@ vec3 CalFlashLight(FlashLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 	float theta = dot(lightDir, normalize(-light.direction));
 	float epsilon = light.cutOff - light.outerCutOff;
 	float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-
 	vec3 result =intensity * (diffuse + specular) + ambient;
 	return result;
 }
