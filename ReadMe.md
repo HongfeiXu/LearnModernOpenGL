@@ -703,3 +703,19 @@ struct FlashLight
 
 ## ----------Model Loading----------
 
+## Day 16 Assimp
+
+> 2018.10.16
+
+**Open Asset Import Library**
+
+当使用Assimp导入一个模型的时候，它通常会将整个模型加载进一个**场景**(Scene)对象，它会包含导入的模型/场景中的所有数据。Assimp会将场景载入为一系列的节点(Node)，每个节点包含了场景对象中所储存数据的索引，每个节点都可以有任意数量的子节点。Assimp数据结构的（简化）模型如下：
+
+![](SourceCode/16.Assimp/assimp_structure.png)
+
+用CMake构建Assimp.
+
+## Day 17 Mesh
+
+> 2018.10.16
+
