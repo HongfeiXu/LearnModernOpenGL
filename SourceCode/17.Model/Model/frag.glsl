@@ -33,7 +33,6 @@ void main()
 	vec3 normal = normalize(Normal);
 
 	vec3 result = CalcDirLight(dirLight, normal, viewDir);
-	result = texture(material.texture_diffuse1, TexCoords).rgb;
 
 	FragColor = vec4(result, 1.0);
 }

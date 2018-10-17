@@ -67,8 +67,6 @@ int main()
 	///////////////////////////////////////////////
 	// configure global opengl state
 	glEnable(GL_DEPTH_TEST);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//glLineWidth(2.0f);
 
 	Shader ourShader("src/vert.glsl", "src/frag.glsl");
 
