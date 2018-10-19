@@ -20,6 +20,7 @@ struct DirLight
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
+in vec3 Tangent;
 
 uniform Material material;
 uniform DirLight dirLight;
@@ -33,7 +34,7 @@ void main()
 	vec3 normal = normalize(Normal);
 
 	vec3 result = CalcDirLight(dirLight, normal, viewDir);
-
+	
 	FragColor = vec4(result, 1.0);
 }
 

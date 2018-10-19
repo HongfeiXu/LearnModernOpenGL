@@ -67,12 +67,23 @@ int main()
 	///////////////////////////////////////////////
 	// configure global opengl state
 	glEnable(GL_DEPTH_TEST);
+
+	// enable or disable writing into the depth buffer
+	glDepthMask(GL_TRUE);
+
+	glDepthFunc(GL_LESS);
+
+	// select a polygon rasterization mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//glLineWidth(2.0f);
+	//glPointSize(2.0f);
 
 	Shader ourShader("src/vert.glsl", "src/frag.glsl");
 
 	Model ourModel("resources/objects/nanosuit/nanosuit.obj");
+	//Model ourModel("resources/objects/cyborg/cyborg.obj");
+	//Model ourModel("resources/objects/planet/planet.obj");
+	//Model ourModel("resources/objects/rock/rock.obj");
 
 	// calculate fps
 	float lastTime = static_cast<float>(glfwGetTime());
