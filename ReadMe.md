@@ -745,3 +745,60 @@ struct FlashLight
 
 > 2018.10.19
 
+`gl_FragCoord` 的x和y分量代表了片段的屏幕空间坐标（其中(0, 0)位于左下角）。gl_FragCoord中也包含了一个z分量，它包含了片段真正的深度值。z值就是需要与深度缓冲内容所对比的那个值。**重要的是要记住深度缓冲中的值在屏幕空间中不是线性的（在透视矩阵应用之前在观察空间中是线性的）。**
+
+深度缓冲中0.5的值并不代表着物体的z值是位于平截头体的中间了，这个顶点的z值实际上非常接近近平面！你可以在下图中看到z值和最终的深度缓冲值之间的非线性关系：
+
+![](SourceCode/19.DepthTesting/depth_non_linear_graph.png)
+
+> Ref: http://www.songho.ca/opengl/gl_projectionmatrix.html
+
+**深度缓冲的可视化**
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+float near = 0.1; 
+float far  = 100.0;
+
+// 由深度纹理中的深度值求出在视锥体中的深度值
+float LinearizeDepth(float depth) 
+{
+	// 《unity shader 入门精要 获取深度和法线纹理》
+    return (near * far)/((near - far) * depth + far);
+}
+
+void main()
+{   
+    // 为了演示除以 far，得到0-1之间的深度值
+	float depth = LinearizeDepth(gl_FragCoord.z) / far; 
+    FragColor = vec4(vec3(depth), 1.0);
+}
+
+
+```
+
+![](SourceCode/19.DepthTesting/DepthTesting.png)
+
+颜色大部分都是黑色，因为深度值的范围是0.1的**近**平面到100的**远**平面，它离我们还是非常远的。结果就是，我们相对靠近近平面，所以会得到更低的（更暗的）深度值。
+
+**深度冲突**
+
+一个很常见的视觉错误会在两个平面或者三角形非常紧密地平行排列在一起时会发生，深度缓冲没有足够的精度来决定两个形状哪个在前面。
+
+深度冲突是深度缓冲的一个常见问题，当物体在远处时效果会更明显（因为深度缓冲在z值比较大的时候有着更小的精度）。深度冲突不能够被完全避免，但一般会有一些技巧有助于在你的场景中减轻或者完全避免深度冲突。
+
+![](SourceCode/19.DepthTesting/Z-fighting.png)
+
+第一个也是最重要的技巧是**永远不要把多个物体摆得太靠近，以至于它们的一些三角形会重叠**。
+
+第二个技巧是**尽可能将近平面设置远一些**。
+
+另外一个很好的技巧是牺牲一些性能，**使用更高精度的深度缓冲**。
+
+深度冲突是一个常见的问题，但如果你组合使用了上面列举出来的技术，你可能不会再需要处理深度冲突了。
+
+![](SourceCode/19.DepthTesting/Z-fighting_resolved.png)
+
+使用方式一解决深度冲突问题。
