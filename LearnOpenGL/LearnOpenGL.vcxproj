@@ -167,6 +167,8 @@
   <ItemGroup>
     <None Include="src\lamp_frag.glsl" />
     <None Include="src\lamp_vert.glsl" />
+    <None Include="src\single_color_frag.glsl" />
+    <None Include="src\single_color_vert.glsl" />
     <None Include="src\vert.glsl" />
     <None Include="src\frag.glsl" />
   </ItemGroup>

@@ -745,6 +745,18 @@ struct FlashLight
 
 > 2018.10.19
 
+```c
+// 开启深度测试，允许深度写入，设置深度测试函数
+glEnable(GL_DEPTH_TEST);
+glDepthMask(GL_TRUE);
+glDepthFunc(GL_LESS);
+
+// 在每次渲染之前清除模板缓冲
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+```
+
+
+
 `gl_FragCoord` 的x和y分量代表了片段的屏幕空间坐标（其中(0, 0)位于左下角）。gl_FragCoord中也包含了一个z分量，它包含了片段真正的深度值。z值就是需要与深度缓冲内容所对比的那个值。**重要的是要记住深度缓冲中的值在屏幕空间中不是线性的（在透视矩阵应用之前在观察空间中是线性的）。**
 
 深度缓冲中0.5的值并不代表着物体的z值是位于平截头体的中间了，这个顶点的z值实际上非常接近近平面！你可以在下图中看到z值和最终的深度缓冲值之间的非线性关系：
@@ -802,3 +814,107 @@ void main()
 ![](SourceCode/19.DepthTesting/Z-fighting_resolved.png)
 
 使用方式一解决深度冲突问题。
+
+## Day 20 模板测试
+
+> 2018.11.12
+
+模板缓冲的一个简单的例子如下：
+
+![](SourceCode/20.StencilTesting/stencil_buffer.png)
+
+模板缓冲首先会被清除为0，之后在模板缓冲中使用1填充了一个空心矩形。场景中的片段将会只在片段的模板值为1的时候会被渲染（其它的都被丢弃了）。
+
+
+使用模板缓冲的时候你可以尽情发挥，但大体的步骤如下：
+
+1. 启用模板缓冲的写入
+2. 渲染物体，更新模板缓冲的内容
+3. 禁用模板缓冲的写入
+4. 渲染（其他）物体，这次根据模板缓冲的内容丢弃特定的片段
+
+
+
+**所以，通过使用模板缓冲，我们可以根据场景中已绘制的其它物体的片段，来决定是否丢弃特定的片段。**
+
+```c
+// 启用模板测试
+glEnable(GL_STENCIL_TEST);
+glStencilMask(0xFF); // 每一位写入模板缓冲时都保持原样
+glStencilFunc(GL_EQUAL, 1, 0xFF); // 只要一个片段的模板值等于(GL_EQUAL)参考值1，片段将会通过测试并被绘制，否则会被丢弃。
+
+// 在每次迭代前清空模板缓冲
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+```
+
+**模板函数**
+
+`glStencilFunc(GLenmu func, GLint ref, GLuint mask);`
+
+- `func`：设置模板测试函数(Stencil Test Function)。这个测试函数将会应用到已储存的模板值上和glStencilFunc函数的`ref`值上。可用的选项有：GL_NEVER、GL_LESS、GL_LEQUAL、GL_GREATER、GL_GEQUAL、GL_EQUAL、GL_NOTEQUAL和GL_ALWAYS。它们的语义和深度缓冲的函数类似。
+- `ref`：设置了模板测试的参考值(Reference Value)。模板缓冲的内容将会与这个值进行比较。
+- `mask`：设置一个掩码，它将会与参考值和储存的模板值在测试比较它们之前进行与(AND)运算。初始情况下所有位都为1。
+
+`glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass);`
+
+- `sfail`：模板测试失败时采取的行为。
+- `dpfail`：模板测试通过，但深度测试失败时采取的行为。
+- `dppass`：模板测试和深度测试都通过时采取的行为。
+
+每个选项都可以选用以下的其中一种行为：
+
+| 行为         | 描述                                               |
+| ------------ | -------------------------------------------------- |
+| GL_KEEP      | 保持当前储存的模板值                               |
+| GL_ZERO      | 将模板值设置为0                                    |
+| GL_REPLACE   | 将模板值设置为glStencilFunc函数设置的`ref`值       |
+| GL_INCR      | 如果模板值小于最大值则将模板值加1                  |
+| GL_INCR_WRAP | 与GL_INCR一样，但如果模板值超过了最大值则归零      |
+| GL_DECR      | 如果模板值大于最小值则将模板值减1                  |
+| GL_DECR_WRAP | 与GL_DECR一样，但如果模板值小于0则将其设置为最大值 |
+| GL_INVERT    | 按位翻转当前的模板缓冲值                           |
+
+默认情况下`glStencilOp`是设置为`(GL_KEEP, GL_KEEP, GL_KEEP)`的，所以不论任何测试的结果是如何，模板缓冲都会保留它的值。默认的行为不会更新模板缓冲，所以如果你想写入模板缓冲的话，你需要至少对其中一个选项设置不同的值。
+
+通过使用`glStencilFunc`和`glStencilOp`，我们可以精确地指定更新模板缓冲的时机与行为了，我们也可以指定什么时候该让模板缓冲通过，即什么时候片段需要被丢弃。
+
+**物体轮廓**（Object Outlining）
+
+![](SourceCode/20.StencilTesting/object_outlining_2.png)
+
+```c
+	///////////////////////////////////////////////
+	// configure global opengl state
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	// 若模板测试通过（不管深度测试是否通过），则将模板值设置为 glStencilFunc 中的 ref 值
+	glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
+
+	///////////////////////////////////////////////
+	// render loop
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); 
+
+    glStencilMask(0x00); // 记得保证我们在绘制地板的时候不会更新模板缓冲
+    normalShader.use();
+    DrawFloor()  
+
+    glStencilFunc(GL_ALWAYS, 1, 0xFF); 
+    glStencilMask(0xFF); 
+    DrawTwoContainers();
+
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilMask(0x00); 
+    glDisable(GL_DEPTH_TEST);
+    shaderSingleColor.use(); 
+    DrawTwoScaledUpContainers();
+    glStencilMask(0xFF);
+    glEnable(GL_DEPTH_TEST);
+```
+
+Further Work
+
+你看到的物体轮廓算法在需要显示选中物体的游戏（想想策略游戏）中非常常见。这样的算法能够在一个模型类中轻松实现。你可以在模型类中设置一个boolean标记，来设置需不需要绘制边框。**如果你有创造力的话，你也可以使用后期处理滤镜(Filter)，像是高斯模糊(Gaussian Blur)，让边框看起来更自然。**
+
+除了物体轮廓之外，模板测试还有很多用途，比如在一个后视镜中绘制纹理，让它能够绘制到镜子形状中，或者使用一个叫做阴影体积(Shadow Volume)的模板缓冲技术渲染实时阴影。模板缓冲为我们已经很丰富的OpenGL工具箱又提供了一个很好的工具。
