@@ -19,8 +19,8 @@ void processInput(GLFWwindow* window);
 unsigned int loadTexture(char const * path);
 
 // settings
-const unsigned int SCR_WIDTH = 1080;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -68,10 +68,14 @@ int main()
 	// configure global opengl state
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-	glBlendEquation(GL_FUNC_ADD);
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	// 若模板测试通过（不管深度测试是否通过），则将模板值设置为 glStencilFunc 中的 ref 值
+	glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
+
+	// enable or disable writing into the depth buffer
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
 
 	// select a polygon rasterization mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -79,6 +83,10 @@ int main()
 	//glPointSize(2.0f);
 
 	Shader ourShader("src/vert.glsl", "src/frag.glsl");
+	Shader singleColorShader("src/single_color_vert.glsl", "src/single_color_frag.glsl");
+
+	Shader modelShader("src/model_vert.glsl", "src/model_frag.glsl");
+	Model ourModel("resources/objects/nanosuit/nanosuit.obj");
 
 	///////////////////////////////////////////////
 	// set up vertex data (and buffer(s)) and configure vertex attributes
@@ -136,16 +144,6 @@ int main()
         -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
          5.0f, -0.5f, -5.0f,  2.0f, 2.0f								
     };
-	float transparentVertices[] = {
-		// positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
-		0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-		0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
-		1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
-
-		0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-		1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
-		1.0f,  0.5f,  0.0f,  1.0f,  0.0f
-	};
 
 	// cube VAO
 	unsigned int cubeVAO;
@@ -173,39 +171,14 @@ int main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	// transparent VAO
-	unsigned int transparentVAO;
-	unsigned int transparentVBO;
-	glGenVertexArrays(1, &transparentVAO);
-	glGenBuffers(1, &transparentVBO);
-	glBindVertexArray(transparentVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
 
 	///////////////////////////////////////////////
 	// load textures
 	unsigned int cubeTexture = loadTexture("resources/textures/marble.jpg");
 	unsigned int planeTexture = loadTexture("resources/textures/metal.png");
-	unsigned int transparentTexture = loadTexture("resources/textures/window.png");
 
-	///////////////////////////////////////////////
-	// transparent window locations
-	vector<glm::vec3> windows
-	{
-		glm::vec3(-1.5f, 0.0f, -0.48f),
-		glm::vec3(1.5f, 0.0f, 0.51f),
-		glm::vec3(0.0f, 0.0f, 0.7f),
-		glm::vec3(-0.3f, 0.0f, -2.3f),
-		glm::vec3(0.5f, 0.0f, -0.6f)
-	};
-
-	///////////////////////////////////////////////
-	// shader configuration
 	ourShader.use();
 	ourShader.setInt("texture0", 0);
 
@@ -235,14 +208,6 @@ int main()
 		// 输入
 		processInput(window);
 
-		// 按照距离排序透明物体
-		std::map<float, glm::vec3> sorted;
-		for (GLuint i = 0; i < windows.size(); ++i)
-		{
-			float distance = glm::length(camera.Position - windows[i]);
-			sorted[distance] = windows[i];
-		}
-
 		// 渲染指令
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);			// 状态设置函数
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);	// 状态使用函数
@@ -252,10 +217,38 @@ int main()
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
+		singleColorShader.use();
+		singleColorShader.setMat4("projection", projection);
+		singleColorShader.setMat4("view", view);
+
 		ourShader.use();
 		ourShader.setMat4("projection", projection);
 		ourShader.setMat4("view", view);
+
+		modelShader.use();
+		modelShader.setFloat("material.shininess", 2);
+		modelShader.setVec3("viewPos", camera.Position);
+		modelShader.setMat4("projection", projection);
+		modelShader.setMat4("view", view);
+
 		
+		///////////////////////////////////////////////
+		// 1. 绘制地板时，不更新模板缓冲
+		glStencilMask(0x00);	
+		ourShader.use();
+		// floor
+		glBindVertexArray(planeVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, planeTexture);
+		model = glm::mat4(1.0f);
+		ourShader.setMat4("model",model);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+
+		///////////////////////////////////////////////
+		// 2. 绘制箱子时，更新模板缓冲（总是通过），即对箱子中所有绘制的片段，将模板值更新为1
+		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		glStencilMask(0xFF);
 		// cubes
 		glBindVertexArray(cubeVAO);
 		glActiveTexture(GL_TEXTURE0);
@@ -268,25 +261,47 @@ int main()
 		model = glm::translate(model, glm::vec3(2.0f, 0.001f, 0.0f));
 		ourShader.setMat4("model", model);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// floor
-		glBindVertexArray(planeVAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, planeTexture);
+		// model
+		modelShader.use();
 		model = glm::mat4(1.0f);
-		ourShader.setMat4("model",model);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		// windows(from furthest to nearest)
-		glBindVertexArray(transparentVAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, transparentTexture);
-		for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
-		{
-			model = glm::mat4(1.0f);
-			model = glm::translate(model, it->second);
-			ourShader.setMat4("model", model);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-		}
-		glBindVertexArray(0);
+		//model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+		modelShader.setMat4("model", model);
+		modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+		modelShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);
+		modelShader.setVec3("dirLight.diffuse", 0.8f, 0.8f, 0.8f);
+		modelShader.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
+		ourModel.Draw(modelShader);
+
+		///////////////////////////////////////////////
+		// 3. 绘制放大的箱子，关闭深度测试，进行模板测试，只在片段的模板值不等于1时才绘制，不更新模板缓冲
+		glDisable(GL_DEPTH_TEST);
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+		glStencilMask(0x00);
+		singleColorShader.use();
+		// cubes
+		glBindVertexArray(cubeVAO);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(2.0f, 0.001f, 0.0f));
+		model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+		singleColorShader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(-1.0f, 0.001f, -1.0f));
+		model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+		singleColorShader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// model
+		singleColorShader.use();
+		model = glm::mat4(1.0f);
+		//model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.21f, 0.21f, 0.21f));
+		singleColorShader.setMat4("model", model);
+		ourModel.Draw(singleColorShader);
+
+		// 重新开启模板缓冲的写入，以及启用深度测试
+		glStencilMask(0xFF);
+		glEnable(GL_DEPTH_TEST);
 
 		// glfw: 交换颜色缓冲，检查输入事件（keys pressed/released, mouse moved etc）
 		glfwSwapBuffers(window);
@@ -390,16 +405,8 @@ unsigned int loadTexture(char const * path)
 		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 		// 为当前绑定的纹理对象设置环绕、过滤方式
-		if (format == GL_RGBA)	// 避免纹理边缘的值和下一个重复的值进行差值
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		}
-		else
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 

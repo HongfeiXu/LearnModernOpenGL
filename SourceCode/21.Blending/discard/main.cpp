@@ -19,8 +19,8 @@ void processInput(GLFWwindow* window);
 unsigned int loadTexture(char const * path);
 
 // settings
-const unsigned int SCR_WIDTH = 1080;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -68,10 +68,6 @@ int main()
 	// configure global opengl state
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-	glBlendEquation(GL_FUNC_ADD);
 
 	// select a polygon rasterization mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -147,6 +143,7 @@ int main()
 		1.0f,  0.5f,  0.0f,  1.0f,  0.0f
 	};
 
+
 	// cube VAO
 	unsigned int cubeVAO;
 	unsigned int cubeVBO;
@@ -191,11 +188,11 @@ int main()
 	// load textures
 	unsigned int cubeTexture = loadTexture("resources/textures/marble.jpg");
 	unsigned int planeTexture = loadTexture("resources/textures/metal.png");
-	unsigned int transparentTexture = loadTexture("resources/textures/window.png");
+	unsigned int transparentTexture = loadTexture("resources/textures/grass.png");
 
 	///////////////////////////////////////////////
-	// transparent window locations
-	vector<glm::vec3> windows
+	// transparent vegetation locations
+	vector<glm::vec3> vegetation
 	{
 		glm::vec3(-1.5f, 0.0f, -0.48f),
 		glm::vec3(1.5f, 0.0f, 0.51f),
@@ -235,14 +232,6 @@ int main()
 		// 输入
 		processInput(window);
 
-		// 按照距离排序透明物体
-		std::map<float, glm::vec3> sorted;
-		for (GLuint i = 0; i < windows.size(); ++i)
-		{
-			float distance = glm::length(camera.Position - windows[i]);
-			sorted[distance] = windows[i];
-		}
-
 		// 渲染指令
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);			// 状态设置函数
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);	// 状态使用函数
@@ -275,14 +264,14 @@ int main()
 		model = glm::mat4(1.0f);
 		ourShader.setMat4("model",model);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-		// windows(from furthest to nearest)
+		// vegetation
 		glBindVertexArray(transparentVAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, transparentTexture);
-		for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+		for (GLuint i = 0; i < vegetation.size(); ++i)
 		{
 			model = glm::mat4(1.0f);
-			model = glm::translate(model, it->second);
+			model = glm::translate(model, vegetation[i]);
 			ourShader.setMat4("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}

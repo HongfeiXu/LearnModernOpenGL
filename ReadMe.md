@@ -918,3 +918,101 @@ Further Work
 你看到的物体轮廓算法在需要显示选中物体的游戏（想想策略游戏）中非常常见。这样的算法能够在一个模型类中轻松实现。你可以在模型类中设置一个boolean标记，来设置需不需要绘制边框。**如果你有创造力的话，你也可以使用后期处理滤镜(Filter)，像是高斯模糊(Gaussian Blur)，让边框看起来更自然。**
 
 除了物体轮廓之外，模板测试还有很多用途，比如在一个后视镜中绘制纹理，让它能够绘制到镜子形状中，或者使用一个叫做阴影体积(Shadow Volume)的模板缓冲技术渲染实时阴影。模板缓冲为我们已经很丰富的OpenGL工具箱又提供了一个很好的工具。
+
+注意：
+
+仅仅通过缩放，来获得轮廓的方式并不能保证得到正确结果，如下
+
+![](SourceCode/20.StencilTesting/object_outlining_false.png)
+
+## Day 21 混合
+
+> 2018.11.14 Blending
+
+Alpha颜色值是颜色向量的第四个分量，你可能已经看到过它很多遍了。在这个教程之前我们都将这个第四个分量设置为1.0，让这个物体的透明度为0.0，而当alpha值为0.0时物体将会是完全透明的。
+
+**Discard**
+
+![](SourceCode/21.Blending/blending_no_discard.png)
+
+![](SourceCode/21.Blending/blending_discard_a.png)
+
+> 注意，当采样纹理的边缘的时候，OpenGL会对边缘的值和纹理下一个重复的值进行插值（因为我们将它的环绕方式设置为了GL_REPEAT。这通常是没问题的，但是由于我们使用了透明值，纹理图像的顶部将会与底部边缘的纯色值进行插值。这样的结果是一个半透明的有色边框，你可能会看见它环绕着你的纹理四边形。要想避免这个，每当你alpha纹理的时候，请将纹理的环绕方式设置为GL_CLAMP_TO_EDGE：
+>
+> ```
+> glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+> glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+> ```
+
+![](SourceCode/21.Blending/blending_discard_b.png)
+
+> ref: https://stackoverflow.com/questions/8509051/is-discard-bad-for-program-performance-in-opengl
+>
+> It's hardware-dependent. For PowerVR hardware, and other GPUs that use tile-based rendering, using `discard` means that the TBR can no longer assume that every fragment drawn will become a pixel. This assumption is important because it allows the TBR to evaluate all the depths *first*, then only evaluate the fragment shaders for the top-most fragments. A sort of deferred rendering approach, except in hardware.
+
+**Blending**
+
+```c
+glEnable(GL_BLEND);
+glBlendFunc(GLenmu sfactor, GLenum dfactor);
+glBlendColor(constantColor);	// 设置常数颜色
+glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO); // 为RGB和alpha通道分别设置不同的选项
+glBlendEquation(GLenum mode);	// 设置运算符
+```
+
+混合方程
+
+```
+C(result) = C(source) * F(source) + C(destination) * F(destination) 
+```
+
+- C(source)：源颜色向量。这是指源自纹理的颜色向量。
+- C(destination): 目标颜色向量。这是当前存储在颜色缓冲中的颜色向量。
+- F(source): 源因子值。指定了alpha值对源颜色的影响。
+- F(destination): 目标因子值。指定了alpha值对目标颜色的影响。
+
+片段着色器运行完成后，并且所有的测试都通过之后，这个混合方程(Blend Equation)才会应用到片段颜色输出与当前颜色缓冲中的值（当前片段之前储存的之前片段的颜色）上。源颜色和目标颜色将会由OpenGL自动设定，但源因子和目标因子的值可以由我们来决定。
+
+**渲染半透明纹理**
+
+![](SourceCode/21.Blending/blending_incorrect_order.png)
+
+发生这一现象的原因是，深度测试和混合一起使用的话会产生一些麻烦。当写入深度缓冲时，深度缓冲不会检查片段是否是透明的，所以透明的部分会和其它值一样写入到深度缓冲中。结果就是窗户的整个四边形不论透明度都会进行深度测试。即使透明的部分应该显示背后的窗户，深度测试仍然丢弃了它们。
+
+要想保证窗户中能够显示它们背后的窗户，我们需要首先绘制背后的这部分窗户。这也就是说在绘制的时候，我们必须先手动将窗户按照最远到最近来排序，再按照顺序渲染。
+
+> 注意，对于草这种全透明的物体，我们可以选择丢弃透明的片段而不是混合它们，这样就解决了这些头疼的问题（没有深度问题）。
+
+**不要打乱顺序**
+
+要想让混合在多个物体上工作，我们需要最先绘制最远的物体，最后绘制最近的物体。普通不需要混合的物体仍然可以使用深度缓冲正常绘制，所以它们不需要排序。但我们仍要保证它们在绘制（排序的）透明物体之前已经绘制完毕了。当绘制一个有不透明和透明物体的场景的时候，大体的原则如下：
+
+1. 先绘制所有不透明的物体。
+2. 对所有透明的物体排序。
+3. 按顺序绘制所有透明的物体。
+
+联想Unity中的Render Queue。
+
+![](SourceCode/21.Blending/blending_correct_order.png)
+
+```c
+		// 按照距离排序透明物体
+		std::map<float, glm::vec3> sorted;
+		for (GLuint i = 0; i < windows.size(); ++i)
+		{
+			float distance = glm::length(camera.Position - windows[i]);
+			sorted[distance] = windows[i];
+		}
+		// 从远到近渲染透明物体
+		for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+		{
+			model = glm::mat4(1.0f);
+			model = glm::translate(model, it->second);
+			ourShader.setMat4("model", model);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+```
+
+虽然按照距离排序物体这种方法对我们这个场景能够正常工作**，但它并没有考虑旋转、缩放或者其它的变换，奇怪形状的物体需要一个不同的计量，而不是仅仅一个位置向量。**
+
+在场景中排序物体是一个很困难的技术，很大程度上由你场景的类型所决定，更别说它额外需要消耗的处理能力了。完整渲染一个包含不透明和透明物体的场景并不是那么容易。更高级的技术还有**次序无关透明度**(Order Independent Transparency, OIT)。

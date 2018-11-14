@@ -9,6 +9,6 @@ float far  = 100.0;
 uniform sampler2D texture0;
 
 void main()
-{
+{    
 	FragColor = texture(texture0, TexCoords);
 }

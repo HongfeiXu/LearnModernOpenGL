@@ -44,5 +44,11 @@
     <None Include="src\single_color_vert.glsl">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="src\model_vert.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\model_frag.glsl">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
