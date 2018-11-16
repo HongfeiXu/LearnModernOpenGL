@@ -171,6 +171,8 @@
     <None Include="src\lamp_vert.glsl" />
     <None Include="src\model_frag.glsl" />
     <None Include="src\model_vert.glsl" />
+    <None Include="src\screen_frag.glsl" />
+    <None Include="src\screen_vert.glsl" />
     <None Include="src\single_color_frag.glsl" />
     <None Include="src\single_color_vert.glsl" />
     <None Include="src\vert.glsl" />

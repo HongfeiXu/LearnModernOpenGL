@@ -1072,3 +1072,309 @@ glFrontFace(GL_CCW);	// （默认）逆时针的面是正向面
 
 ![](SourceCode/22.FaceCulling/cullfront.png)
 
+## Day 23 帧缓冲
+
+> 2018.11.25 Framebuffers
+
+### 创建一个帧缓冲
+
+```c
+unsigned int fbo;
+glGenFramebuffers(1. &fbo);
+glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+// 为帧缓冲创建附件，并将附件附加到帧缓冲上
+// ...
+
+if(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMMERBUFFER_COMPLETE)
+	// 帧缓冲是完整的，处理帧缓冲
+
+```
+
+一个完整的帧缓冲需要满足以下的条件：
+
+- 附加至少一个缓冲（颜色、深度或模板缓冲）。
+- 至少有一个颜色**附件**(Attachment)。
+- 所有的附件都必须是完整的（保留了内存）。
+- 每个缓冲都应该有相同的样本数。
+
+由于我们的帧缓冲不是默认帧缓冲，渲染指令将不会对窗口的视觉输出有任何影响。出于这个原因，渲染到一个不同的帧缓冲被叫做**离屏渲染(Off-screen Rendering)**。要保证所有的渲染操作在主窗口中有视觉效果，我们需要再次激活默认帧缓冲，将它绑定到`0`。
+
+```c
+glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+// 在完成所有帧缓冲操作后，删除这个帧缓冲对象
+glDeleteFramebuffers(1, &fbo);
+```
+
+在完整性检查执行之前，我们需要给帧缓冲附加一个附件。附件是一个内存位置，它能够作为帧缓冲的一个缓冲，可以将它想象为一个图像。当创建一个附件的时候我们有两个选项：**纹理或渲染缓冲对象**(Renderbuffer Object)。
+
+### 纹理附件
+
+当把一个纹理附加到帧缓冲的时候，所有的渲染指令将会写入到这个纹理中，就想它是一个普通的颜色/深度或模板缓冲一样。使用纹理的优点是，所有渲染操作的结果将会被储存在一个纹理图像中，我们之后可以在着色器中很方便地使用它。
+
+为帧缓冲创建一个纹理和创建一个普通的纹理差不多：
+
+```c
+unsigned int texture;
+glGenTextures(1, &texture);
+glBindTexture(GL_TEXTURE_2D, texture);
+
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+```
+
+主要的区别就是，我们将维度设置为了屏幕大小（尽管这不是必须的），并且我们给纹理的`data`参数传递了`NULL`。对于这个纹理，我们仅仅分配了内存而没有填充它。填充这个纹理将会在我们渲染到帧缓冲之后来进行。同样注意我们并不关心环绕方式或多级渐远纹理，我们在大多数情况下都不会需要它们。
+
+现在我们已经创建好一个纹理了，要做的最后一件事就是将它**附加到帧缓冲**上了：
+
+```c
+glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+```
+
+- target：帧缓冲的目标（绘制、读取或者两者皆有）
+- attachment：我们想要附加的附件类型。当前我们正在附加一个颜色附件。注意最后的0意味着我们可以附加多个颜色附件。我们将在之后的教程中提到。
+- textarget：你希望附加的纹理类型
+- texture：要附加的纹理本身
+- level：多级渐远纹理的级别。我们将它保留为0。
+
+除了颜色附件之外，我们还可以附加一个深度和模板缓冲纹理到帧缓冲对象中。要附加深度缓冲的话，我们将附件类型设置为`GL_DEPTH_ATTACHMENT`。注意纹理的格式(Format)和内部格式(Internalformat)类型将变为`GL_DEPTH_COMPONENT`，来反映深度缓冲的储存格式。要附加模板缓冲的话，你要将第二个参数设置为`GL_STENCIL_ATTACHMENT`，并将纹理的格式设定为`GL_STENCIL_INDEX`。
+
+也可以将深度缓冲和模板缓冲附加为一个单独的纹理。纹理的每32位数值将包含24位的深度信息和8位的模板信息。要将深度和模板缓冲附加为一个纹理的话，我们使用`GL_DEPTH_STENCIL_ATTACHMENT`类型，并配置纹理的格式，让它包含合并的深度和模板值。将一个深度和模板缓冲附加为一个纹理到帧缓冲的例子可以在下面找到：
+
+```c
+glTexImage2D(
+  GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, 
+  GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL
+);
+
+glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texture, 0);
+```
+
+### 渲染缓冲对象
+
+和纹理图像一样，渲染缓冲对象是一个真正的缓冲，即一系列的字节、整数、像素等。渲染缓冲对象附加的好处是，它会将数据储存为OpenGL原生的渲染格式，它是为离屏渲染到帧缓冲优化过的。
+
+渲染缓冲对象直接将所有的渲染数据储存到它的缓冲中，不会做任何针对纹理格式的转换，让它变为一个更快的可写储存介质。然而，渲染缓冲对象通常都是只写的，所以你不能读取它们（比如使用纹理访问）。当然你仍然还是能够使用`glReadPixels`来读取它，这会从当前绑定的帧缓冲，而不是附件本身，中返回特定区域的像素。
+
+因为它的数据已经是原生的格式了，当写入或者复制它的数据到其它缓冲中时是非常快的。所以，交换缓冲这样的操作在使用渲染缓冲对象时会非常快。
+
+```c
+unsigned int rbo;
+glGenRenderbuffers(1, &rbo);
+glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+```
+
+由于渲染缓冲对象通常都是只写的，它们会经常用于深度和模板附件，因为大部分时间我们都不需要从深度和模板缓冲中读取值，只关心深度和模板测试。我们**需要**深度和模板值用于测试，但不需要对它们进行**采样**，所以渲染缓冲对象非常适合它们。当我们不需要从这些缓冲中采样的时候，通常都会选择渲染缓冲对象，因为它会更优化一点。
+
+创建一个深度和模板渲染缓冲对象可以通过调用glRenderbufferStorage函数来完成：
+
+```c
+glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+```
+
+最后一件事就是附加这个渲染缓冲对象：
+
+```
+glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+```
+
+> 通常的规则是，如果你不需要从一个缓冲中采样数据，那么对这个缓冲使用渲染缓冲对象会是明智的选择。如果你需要从缓冲中采样颜色或深度值等数据，那么你应该选择纹理附件。性能方面它不会产生非常大的影响的。
+
+### 渲染到纹理
+
+```c
+	unsigned int framebuffer;
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	// 创建一个纹理图像，作为颜色附件附加到帧缓冲上
+	unsigned int texColorBuffer;
+	glGenTextures(1, &texColorBuffer);
+	glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
+	// 创建渲染缓冲对象，作为深度（和模板）附件到帧缓冲上
+	unsigned int rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+	// 检查帧缓冲是否完整
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR::FRAMEBUFFER::Framebuffer is not complete!" << std::endl;
+	// 解绑帧缓冲，保证我们不会不小心渲染到错误的帧缓冲上
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+```
+
+要想绘制场景到一个纹理上，我们需要采取以下的步骤：
+
+1. 将新的帧缓冲绑定为激活的帧缓冲，和往常一样渲染场景
+2. 绑定默认的帧缓冲
+3. 绘制一个横跨整个屏幕的四边形，将帧缓冲的颜色缓冲作为它的纹理。
+
+![](SourceCode/23.Framebuffer/FramebufferTexture2D.png)
+
+线框模式渲染，得到正确结果。
+
+所以这个有什么用处呢？因为我们能够以一个纹理图像的方式访问已渲染场景中的每个像素，我们可以在片段着色器中创建出非常有趣的效果。这些有趣效果统称为**后期处理(Post-processing)效果**。
+
+### 后期处理
+
+**反相**
+
+从屏幕纹理中取颜色值，然后用1.0减去它，对它进行反相：
+
+```c
+// screen_frag.glsl
+#version 330 core
+out vec4 FragColor;
+
+in vec2 TexCoords;
+
+uniform sampler2D screenTexture;
+
+void main()
+{
+	FragColor = vec4(1.0 - texture(screenTexture, TexCoords).rgb, 1.0);
+}
+```
+
+
+
+![](SourceCode/23.Framebuffer/Inversion.png)
+
+**灰度**
+
+```c
+// screen_frag.glsl
+#version 330 core
+out vec4 FragColor;
+
+in vec2 TexCoords;
+
+uniform sampler2D screenTexture;
+
+void main()
+{
+	FragColor = texture(screenTexture, TexCoords);
+	float average = (FragColor.r + FragColor.g + FragColor.b) / 3.0;
+	FragColor = vec4(average, average, average, 1.0);
+}
+```
+
+
+
+![](SourceCode/23.Framebuffer/grayscale.png)
+
+**核效果**
+
+在一个纹理图像上做后期处理的另外一个好处是，我们可以从纹理的其它地方采样颜色值。比如说我们可以在当前纹理坐标的周围取一小块区域，对当前纹理值周围的多个纹理值进行采样。我们可以结合它们创建出很有意思的效果。
+
+核(Kernel)（或卷积矩阵(Convolution Matrix)）是一个类矩阵的数值数组，它的中心为当前的像素，它会用它的核值乘以周围的像素值，并将结果相加变成一个值。所以，基本上我们是在对当前像素周围的纹理坐标添加一个小的偏移量，并根据核将结果合并。下面是核的一个例子：
+
+```
+2  2  2
+2 -15 2
+2  2  2
+```
+
+这个核取了8个周围像素值，将它们乘以2，而把当前的像素乘以-15。这个核的例子将周围的像素乘上了一个权重，并将当前像素乘以一个比较大的负权重来平衡结果。
+
+> 你在网上找到的大部分核将所有的权重加起来之后都应该会等于1，如果它们加起来不等于1，这就意味着最终的纹理颜色将会比原纹理值更亮或者更暗了。
+
+**锐化效果**
+
+```c
+// screen_frag.glsl
+#version 330 core
+out vec4 FragColor;
+
+in vec2 TexCoords;
+
+uniform sampler2D screenTexture;
+
+const float offset = 1.0 / 300.0;
+
+void main()
+{
+	vec2 offsets[9] = vec2[](
+		vec2(-offset, offset),
+		vec2(0.0,     offset),
+		vec2(offset,  offset),
+		vec2(-offset, 0.0),
+		vec2(0.0,     0.0),
+		vec2(offset,  0.0),
+		vec2(-offset, -offset),
+		vec2(0.0,     -offset),
+		vec2(offset,  -offset)
+		);
+	float kernel[9] = float[](
+		-1, -1, -1,
+		-1,  9, -1,
+		-1, -1, -1
+		);
+	vec3 sampleTex[9];
+	for(int i = 0; i < 9; ++i)
+	{
+		sampleTex[i] = vec3(texture(screenTexture, TexCoords.st + offsets[i]));
+	}
+	vec3 col = vec3(0.0);
+	for(int i = 0; i < 9; ++i)
+	{
+		col += sampleTex[i] * kernel[i];
+	}
+
+	FragColor = vec4(col, 1.0);
+}
+```
+
+`const float offset = 1.0 / 300.0;`
+
+![](SourceCode/23.Framebuffer/Sharpen.png)
+
+`const float offset = 1.0 / 30.0;`
+
+![](SourceCode/23.Framebuffer/SharpenToMuch.png)
+
+**模糊效果**
+
+直接替换上面shader代码中的核即可。
+
+```c
+	float kernel[9] = float[](
+		1.0/16.0, 2.0/16.0, 1.0/16.0,
+		2.0/16.0, 4.0/16.0, 2.0/16.0,
+		1.0/16.0, 2.0/16.0, 1.0/16.0
+		);
+```
+
+![](SourceCode/23.Framebuffer/Blur.png)
+
+**边缘检测（基于颜色信息）**
+
+```c
+	float kernel[9] = float[](
+		1, 1, 1,
+		1, -8, 1,
+		1, 1, 1
+		);
+```
+
+![](SourceCode/23.Framebuffer/EdgeDetection.png)
+
+> 注意，核在对屏幕纹理的边缘进行采样的时候，由于还会对中心像素周围的8个像素进行采样，其实会取到纹理之外的像素。由于环绕方式默认是GL_REPEAT，所以在没有设置的情况下取到的是屏幕另一边的像素，而另一边的像素本不应该对中心像素产生影响，这就可能会在屏幕边缘产生很奇怪的条纹。为了消除这一问题，我们可以将屏幕纹理的环绕方式都设置为GL_CLAMP_TO_EDGE。这样子在取到纹理外的像素时，就能够重复边缘的像素来更精确地估计最终的值了。
+
+这里设置屏幕纹理的环绕方式为 `GL_CLAMP_TO_EDGE`
+
+![](SourceCode/23.Framebuffer/EdgeDetectionClampToEdge.png)
+
+**拓展**
+
+基于深度和法线信息进行边缘检测。
+
+首先，需要拿到深度和法线信息。。。

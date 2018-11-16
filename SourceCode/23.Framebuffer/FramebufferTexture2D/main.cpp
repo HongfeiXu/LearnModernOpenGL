@@ -76,7 +76,7 @@ int main()
 	glCullFace(GL_BACK);
 
 	// select a polygon rasterization mode
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//glLineWidth(2.0f);
 	//glPointSize(2.0f);
 
@@ -211,7 +211,7 @@ int main()
 
 	///////////////////////////////////////////////
 	// load textures
-	unsigned int cubeTexture = loadTexture("resources/textures/container.jpg");
+	unsigned int cubeTexture = loadTexture("resources/textures/marble.jpg");
 	unsigned int planeTexture = loadTexture("resources/textures/metal.png");
 
 	///////////////////////////////////////////////
@@ -232,8 +232,6 @@ int main()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
 	// 创建渲染缓冲对象，作为深度（和模板）附件到帧缓冲上

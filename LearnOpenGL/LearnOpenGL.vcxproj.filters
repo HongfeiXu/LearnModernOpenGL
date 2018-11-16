@@ -56,5 +56,11 @@
     <None Include="src\axis_frag.glsl">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="src\screen_vert.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="src\screen_frag.glsl">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>
