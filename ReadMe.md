@@ -1378,3 +1378,173 @@ void main()
 基于深度和法线信息进行边缘检测。
 
 首先，需要拿到深度和法线信息。。。
+
+## Day 24 立方体贴图
+
+> 2018.11.26 Cube Map
+
+简单来说，立方体贴图就是一个包含了6个2D纹理的纹理，每个2D纹理都组成了立方体的一个面：一个有纹理的立方体。
+
+![](SourceCode/24.CubeMap/cubemaps_sampling.png)
+
+> 方向向量的大小并不重要，只要提供了方向，OpenGL就会获取方向向量（最终）所击中的纹素，并返回对应的采样纹理值。
+
+如果我们假设将这样的立方体贴图应用到一个立方体上，采样立方体贴图所使用的方向向量将和立方体（插值的）顶点位置非常相像。这样子，只要立方体的中心位于原点，我们就能使用立方体的实际位置向量来对立方体贴图进行采样了。接下来，我们可以将所有顶点的纹理坐标当做是立方体的顶点位置。最终得到的结果就是可以访问立方体贴图上正确面(Face)纹理的一个纹理坐标。
+
+### 创建立方体贴图
+
+
+
+```c++
+unsigned int textureID;
+glGenTextures(1, &textureID);
+glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+int width, height, nrChannels;
+for (unsigned int i = 0; i < faces.size(); ++i)
+{
+    unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i
+                     , 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+        stbi_image_free(data);
+    }
+}
+glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+```
+
+不要被`GL_TEXTURE_WRAP_R`吓到，它仅仅是为纹理的**R**坐标设置了环绕方式，它对应的是纹理的第三个维度（和位置的**z**一样）。我们将环绕方式设置为`GL_CLAMP_TO_EDGE`，这是因为正好处于两个面之间的纹理坐标可能不能击中一个面（由于一些硬件限制），所以通过使用`GL_CLAMP_TO_EDGE`，OpenGL将在我们对两个面之间采样的时候，永远返回它们的边界值。
+
+在片段着色器中，我们使用了一个不同类型的采样器，`samplerCube`，我们将使用texture函数使用它进行采样，但这次我们将使用一个`vec3`的方向向量而不是`vec2`。使用立方体贴图的**片段着色器**会像是这样的：
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+in vec3 textureDir;  // 代表3D纹理坐标的方向向量
+
+uniform samplerCube cubemap; // 立方体贴图的纹理采样器
+
+void main()
+{
+	FragColor = texture(cubemap, textureDir);
+}
+```
+
+### 天空盒
+
+绘制天空盒时，我们需要将它变为场景中的第一个渲染的物体，并且禁用深度写入。这样子天空盒就会永远被绘制在其它物体的背后了。
+
+```c
+glDepthMask(GL_FALSE);
+skyboxShader.use();
+// ... 设置观察和投影矩阵
+glBindVertexArray(skyboxVAO);
+glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+glDrawArrays(GL_TRIANGLES, 0, 36);
+glDepthMask(GL_TRUE);
+// ... 绘制剩下的场景
+```
+
+我们希望移除观察矩阵中的位移部分，让移动不会影响天空盒的位置向量。
+
+```c
+view = glm::mat4(glm::mat3(camera.GetViewMatrix()));	// 将观察矩阵换为3x3矩阵（移除位移）
+skyboxShader.setMat4("view", view);
+```
+
+![](SourceCode/24.CubeMap/skybox.png)
+
+### 优化
+
+目前我们是首先渲染天空盒，之后再渲染场景中的其它物体。这样子能够工作，但不是非常高效。如果我们先渲染天空盒，我们就会对屏幕上的每一个像素运行一遍片段着色器，即便只有一小部分的天空盒最终是可见的。可以使用提前深度测试(Early Depth Testing)轻松丢弃掉的片段能够节省我们很多宝贵的带宽。
+
+所以，我们将会最后渲染天空盒，以获得轻微的性能提升。这样子的话，深度缓冲就会填充满所有物体的深度值了，我们只需要在提前深度测试通过的地方渲染天空盒的片段就可以了，很大程度上减少了片段着色器的调用。**我们需要欺骗深度缓冲，让它认为天空盒有着最大的深度值1.0，只要它前面有一个物体，深度测试就会失败。**
+
+在[坐标系统](https://learnopengl-cn.github.io/01%20Getting%20started/08%20Coordinate%20Systems/)小节中我们说过，**透视除法**是在**顶点着色器**运行之后执行的，将gl_Position的`xyz`坐标除以w分量。我们又从[深度测试](https://learnopengl-cn.github.io/04%20Advanced%20OpenGL/01%20Depth%20testing/)小节中知道，相除结果的z分量等于顶点的深度值。使用这些信息，我们可以将输出位置的z分量等于它的w分量，让z分量永远等于1.0，这样子的话，当透视除法执行之后，z分量会变为`w / w = 1.0`。
+
+```c
+void main()
+{
+    vec4 pos = projection * view * vec4(aPos, 1.0);
+    TexCoords = aPos;
+    gl_Position = pos.xyww;
+}
+```
+
+### 环境映射
+
+通过使用环境的立方体贴图，我们可以给物体反射和折射的属性。这样使用环境立方体贴图的技术叫做环境映射(Environment Mapping)，其中最流行的两个是反射(Reflection)和折射(Refraction)。
+
+### 反射
+
+反射这个属性表现为物体（或物体的一部分）反射它周围环境，即根据观察者的视角，物体的颜色或多或少等于它的环境。镜子就是一个反射性物体：它会根据观察者的视角反射它周围的环境。
+
+反射的原理并不难。下面这张图展示了我们如何计算反射向量，并如何使用这个向量来从立方体贴图中采样：
+
+![](SourceCode/24.CubeMap/cubemaps_reflection_theory.png)
+
+我们根据观察方向向量和物体的法向量，来计算反射向量。我们可以使用GLSL内建的`reflec`t函数来计算这个反射向量。最终的向量将会作为索引/采样立方体贴图的方向向量，返回环境的颜色值。最终的结果是物体看起来反射了天空盒。
+
+```c
+#version 330 core
+out vec4 FragColor;
+
+in vec3 Normal;
+in vec3 Position;
+
+uniform vec3 cameraPos;
+uniform samplerCube skybox;
+
+void main()
+{             
+    vec3 I = normalize(Position - cameraPos);
+    vec3 R = reflect(I, normalize(Normal));
+    FragColor = vec4(texture(skybox, R).rgb, 1.0);
+}
+```
+
+![](SourceCode/24.CubeMap/reflect.png)
+
+### 折射
+
+折射是通过斯涅尔定律(Snell’s Law)来描述的，使用环境贴图的话看起来像是这样：折射是通过斯涅尔定律(Snell’s Law)来描述的，使用环境贴图的话看起来像是这样：
+
+![](SourceCode/24.CubeMap/cubemaps_refraction_theory.png)
+
+折射可以使用GLSL的内建refract函数来轻松实现，它需要一个法向量、一个观察方向和两个材质之间的折射率(Refractive Index)。
+
+|材质|折射率|
+| -- | -- |
+|空气|1.00|
+|水|1.33|
+|冰|1.309|
+|玻璃|1.52|
+|钻石|2.42|
+
+![](SourceCode/24.CubeMap/refract.png)
+
+### 动态环境贴图[TODO]
+
+
+
+现在我们使用的都是静态图像的组合来作为天空盒，看起来很不错，但它没有在场景中包括可移动的物体。我们一直都没有注意到这一点，因为我们只使用了一个物体。如果我们有一个镜子一样的物体，周围还有多个物体，镜子中可见的只有天空盒，看起来就像它是场景中唯一一个物体一样。
+
+通过使用帧缓冲，我们能够为物体的6个不同角度创建出场景的纹理，并在每个渲染迭代中将它们储存到一个立方体贴图中。之后我们就可以使用这个（动态生成的）立方体贴图来创建出更真实的，包含其它物体的，反射和折射表面了。这就叫做动态环境映射(Dynamic Environment Mapping)，因为我们动态创建了物体周围的立方体贴图，并将其用作环境贴图。
+
+虽然它看起来很棒，但它有一个很大的缺点：我们需要为使用环境贴图的物体渲染场景6次，这是对程序是非常大的性能开销。现代的程序通常会尽可能使用天空盒，并在可能的时候使用预编译的立方体贴图，只要它们能产生一点动态环境贴图的效果。虽然动态环境贴图是一个很棒的技术，但是要想在不降低性能的情况下让它工作还是需要非常多的技巧的。
+
+### 练习
+
+反射贴图。。。todo
+

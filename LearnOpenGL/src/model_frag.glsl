@@ -3,7 +3,7 @@ out vec4 FragColor;
 
 struct Material
 {
-	sampler2D texture_diffuse1;	// 漫反射贴图
+	sampler2D texture_diffuse1;		// 漫反射贴图
 	sampler2D texture_specular1;	// 高光反射贴图
 	float shininess;
 };
@@ -25,19 +25,18 @@ in vec3 Tangent;
 uniform Material material;
 uniform DirLight dirLight;
 uniform vec3 viewPos;
+uniform samplerCube skybox;
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 
 void main()
 {    
-	vec3 viewDir = normalize(viewPos - FragPos);
-	vec3 normal = normalize(Normal);
-
-	vec3 result = CalcDirLight(dirLight, normal, viewDir);
+	float ratio = 1.00 / 1.52;	// 玻璃的反射率
+	vec3 I = normalize(FragPos - viewPos);
+	vec3 R = reflect(I, normalize(Normal));
 	
-	FragColor = vec4(result, 1.0);
+	FragColor = vec4(texture(skybox, R).rgb, 1.0);
 }
-
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 {
 	vec3 ambient = light.ambient * texture(material.texture_diffuse1, TexCoords).rgb;

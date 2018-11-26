@@ -83,6 +83,7 @@ int main()
 	//glPointSize(2.0f);
 
 	Shader axisShader("src/axis_vert.glsl", "src/axis_frag.glsl");
+	Shader ourShader("src/vert.glsl", "src/frag.glsl");
 	Shader skyboxShader("src/skybox_vert.glsl", "src/skybox_frag.glsl");
 	Shader modelShader("src/model_vert.glsl", "src/model_frag.glsl");
 
@@ -198,6 +199,18 @@ int main()
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	// cube VAO
+	unsigned int cubeVAO;
+	unsigned int cubeVBO;
+	glGenVertexArrays(1, &cubeVAO);
+	glGenBuffers(1, &cubeVBO);
+	glBindVertexArray(cubeVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
 	// skybox VAO
 	unsigned int skyboxVAO;
 	unsigned int skyboxVBO;
@@ -215,6 +228,8 @@ int main()
 
 	///////////////////////////////////////////////
 	// load textures
+	unsigned int cubeTexture = loadTexture("resources/textures/container.jpg");
+	unsigned int planeTexture = loadTexture("resources/textures/metal.png");
 
 	vector<std::string> faces
 	{
@@ -229,10 +244,12 @@ int main()
 
 	///////////////////////////////////////////////
 	// shader configuration
+	ourShader.use();
+	ourShader.setInt("skybox", 0);
 	skyboxShader.use();
 	skyboxShader.setInt("skybox", 0);
 	modelShader.use();
-	modelShader.setInt("skybox", 3);
+	modelShader.setInt("skybox", 0);
 
 	///////////////////////////////////////////////
 	// calculate fps
@@ -276,6 +293,9 @@ int main()
 		axisShader.use();
 		axisShader.setMat4("projection", projection);
 		axisShader.setMat4("view", view);
+		ourShader.use();
+		ourShader.setMat4("projection", projection);
+		ourShader.setMat4("view", view);
 		modelShader.use();
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
@@ -296,17 +316,12 @@ int main()
 		modelShader.use();
 		modelShader.setFloat("material.shininess", 2);
 		modelShader.setVec3("viewPos", camera.Position);
-		glActiveTexture(GL_TEXTURE3);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f));	// translate it down so it's at the center of the scene
 		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));			// it's a bit too big for our scene, so scale it down
 		modelShader.setMat4("model", model);
-		// directional light
-		modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-		modelShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);
-		modelShader.setVec3("dirLight.diffuse", 0.8f, 0.8f, 0.8f);
-		modelShader.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
 		ourModel.Draw(modelShader);
 		// skybox
 		skyboxShader.use();
@@ -318,6 +333,7 @@ int main()
 		// glfw: 交换颜色缓冲，检查输入事件（keys pressed/released, mouse moved etc）
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		glBindVertexArray(cubeVAO);
 	}
 
 	///////////////////////////////////////////////

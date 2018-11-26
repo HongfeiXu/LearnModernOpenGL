@@ -74,8 +74,8 @@ int main()
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 	//glBlendEquation(GL_FUNC_ADD);
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	// select a polygon rasterization mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -83,8 +83,8 @@ int main()
 	//glPointSize(2.0f);
 
 	Shader axisShader("src/axis_vert.glsl", "src/axis_frag.glsl");
+	Shader ourShader("src/vert.glsl", "src/frag.glsl");
 	Shader skyboxShader("src/skybox_vert.glsl", "src/skybox_frag.glsl");
-	Shader modelShader("src/model_vert.glsl", "src/model_frag.glsl");
 
 	///////////////////////////////////////////////
 	// set up vertex data (and buffer(s)) and configure vertex attributes
@@ -98,48 +98,58 @@ int main()
 		0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f
 	};
     float cubeVertices[] = {
-		// positions          // normals
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+        // positions          // texture Coords
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
 
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+    float planeVertices[] = {
+        // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
+          5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+		 -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+		 -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
+
+          5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+		  5.0f, -0.5f, -5.0f,  2.0f, 2.0f,
+		 -5.0f, -0.5f, -5.0f,  0.0f, 2.0f
     };
 	float skyboxVertices[] = {
 		// positions          
@@ -198,6 +208,31 @@ int main()
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	// cube VAO
+	unsigned int cubeVAO;
+	unsigned int cubeVBO;
+	glGenVertexArrays(1, &cubeVAO);
+	glGenBuffers(1, &cubeVBO);
+	glBindVertexArray(cubeVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	// plane VAO
+	unsigned int planeVAO;
+	unsigned int planeVBO;
+	glGenVertexArrays(1, &planeVAO);
+	glGenBuffers(1, &planeVBO);
+	glBindVertexArray(planeVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	// skybox VAO
 	unsigned int skyboxVAO;
 	unsigned int skyboxVBO;
@@ -210,11 +245,10 @@ int main()
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// load model
-	Model ourModel("resources/objects/nanosuit/nanosuit.obj");
-
 	///////////////////////////////////////////////
 	// load textures
+	unsigned int cubeTexture = loadTexture("resources/textures/container.jpg");
+	unsigned int planeTexture = loadTexture("resources/textures/metal.png");
 
 	vector<std::string> faces
 	{
@@ -229,10 +263,10 @@ int main()
 
 	///////////////////////////////////////////////
 	// shader configuration
+	ourShader.use();
+	ourShader.setInt("texture0", 0);
 	skyboxShader.use();
 	skyboxShader.setInt("skybox", 0);
-	modelShader.use();
-	modelShader.setInt("skybox", 3);
 
 	///////////////////////////////////////////////
 	// calculate fps
@@ -276,13 +310,14 @@ int main()
 		axisShader.use();
 		axisShader.setMat4("projection", projection);
 		axisShader.setMat4("view", view);
-		modelShader.use();
-		modelShader.setMat4("projection", projection);
-		modelShader.setMat4("view", view);
+		ourShader.use();
+		ourShader.setMat4("projection", projection);
+		ourShader.setMat4("view", view);
 		skyboxShader.use();
 		skyboxShader.setMat4("projection", projection);
 		view = glm::mat4(glm::mat3(camera.GetViewMatrix()));	// 将观察矩阵换为3x3矩阵（移除位移）
 		skyboxShader.setMat4("view", view);
+
 
 		// axis
 		axisShader.use();
@@ -292,22 +327,27 @@ int main()
 		glLineWidth(2.0f);
 		glDrawArrays(GL_LINES, 0, 6);
 		glLineWidth(1.0f);
-		// model
-		modelShader.use();
-		modelShader.setFloat("material.shininess", 2);
-		modelShader.setVec3("viewPos", camera.Position);
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		// cubes
+		ourShader.use();
+		glBindVertexArray(cubeVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, cubeTexture);
 		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f));	// translate it down so it's at the center of the scene
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));			// it's a bit too big for our scene, so scale it down
-		modelShader.setMat4("model", model);
-		// directional light
-		modelShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-		modelShader.setVec3("dirLight.ambient", 0.5f, 0.5f, 0.5f);
-		modelShader.setVec3("dirLight.diffuse", 0.8f, 0.8f, 0.8f);
-		modelShader.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
-		ourModel.Draw(modelShader);
+		model = glm::translate(model, glm::vec3(-1.0f, 0.001f, -1.0f));
+		ourShader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(2.0f, 0.001f, 0.0f));
+		ourShader.setMat4("model", model);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// floor
+		glBindVertexArray(planeVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, planeTexture);
+		model = glm::mat4(1.0f);
+		ourShader.setMat4("model",model);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
 		// skybox
 		skyboxShader.use();
 		glBindVertexArray(skyboxVAO);
@@ -318,13 +358,18 @@ int main()
 		// glfw: 交换颜色缓冲，检查输入事件（keys pressed/released, mouse moved etc）
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		glBindVertexArray(cubeVAO);
 	}
 
 	///////////////////////////////////////////////
 	// optional: de-allocate all resources once they've outlived their purpose:
 	glDeleteVertexArrays(1, &axisVAO);
+	glDeleteVertexArrays(1, &cubeVAO);
+	glDeleteVertexArrays(1, &planeVAO);
 	glDeleteVertexArrays(1, &skyboxVAO);
 	glDeleteBuffers(1, &axisVBO);
+	glDeleteBuffers(1, &cubeVBO);
+	glDeleteBuffers(1, &planeVBO);
 	glDeleteBuffers(1, &skyboxVBO);
 
 	///////////////////////////////////////////////
